@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Komentar & User</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: #f4f6f9;
+      color: #333;
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 1rem;
+    }
+
+    h2 {
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+      color: #34495e;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 2rem;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background-color: #f0f0f0;
+      color: #555;
+    }
+
+    tr:hover {
+      background-color: #f9f9f9;
+    }
+
+    @media (max-width: 600px) {
+      table, tbody, tr, td, th {
+        display: block;
+        width: 100%;
+      }
+
+      td, th {
+        box-sizing: border-box;
+        padding: 10px;
+      }
+
+      th {
+        background: #eaeaea;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Dashboard Komentar & User (Online)</h1>
+
+  <h2>👥 Pengguna Terdaftar</h2>
+  <table id="userTable">
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Email</th>
+        <th>Login Terakhir</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>💬 Komentar Terbaru</h2>
+  <table id="commentTable">
+    <thead>
+      <tr>
+        <th>Artikel</th>
+        <th>Penulis</th>
+        <th>Komentar</th>
+        <th>Tanggal</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function fetchData() {
+      const [usersRes, commentsRes] = await Promise.all([
+        fetch('/api/users'),
+        fetch('/api/all-comments'),
+      ]);
+
+      const users = await usersRes.json();
+      const comments = await commentsRes.json();
+
+      const userTable = document.querySelector('#userTable tbody');
+      const commentTable = document.querySelector('#commentTable tbody');
+
+      users.forEach(user => {
+        const row = `<tr>
+          <td>${user.displayName}</td>
+          <td>${user.email}</td>
+          <td>${new Date(user.createdAt).toLocaleString()}</td>
+        </tr>`;
+        userTable.innerHTML += row;
+      });
+
+      comments.forEach(comment => {
+        const row = `<tr>
+          <td>${comment.articleIdentifier}</td>
+          <td>${comment.author}</td>
+          <td>${comment.text}</td>
+          <td>${new Date(comment.timestamp).toLocaleString()}</td>
+        </tr>`;
+        commentTable.innerHTML += row;
+      });
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>
