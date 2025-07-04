@@ -2,130 +2,598 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard Komentar & User</title>
+  <title>Dashboard Komentar & User Online</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
       padding: 2rem;
-      background: #f4f6f9;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
       color: #333;
     }
 
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
     h1 {
-      color: #2c3e50;
-      margin-bottom: 1rem;
+      color: white;
+      margin-bottom: 2rem;
+      text-align: center;
+      font-size: 2.5rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
 
     h2 {
       margin-top: 2rem;
+      margin-bottom: 1rem;
+      color: white;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #667eea;
+      display: block;
       margin-bottom: 0.5rem;
-      color: #34495e;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .online-indicator {
+      color: #27ae60 !important;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+
+    .table-container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      overflow-x: auto;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 2rem;
-      background: #fff;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      background: transparent;
     }
 
     th, td {
       padding: 12px 16px;
       text-align: left;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
     }
 
     th {
-      background-color: #f0f0f0;
-      color: #555;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
     }
 
     tr:hover {
-      background-color: #f9f9f9;
+      background-color: rgba(102, 126, 234, 0.1);
     }
 
-    @media (max-width: 600px) {
+    td {
+      font-size: 0.9rem;
+    }
+
+    .refresh-btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-left: auto;
+      transition: all 0.3s ease;
+    }
+
+    .refresh-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .refresh-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+      font-style: italic;
+    }
+
+    .error {
+      text-align: center;
+      padding: 2rem;
+      color: #e74c3c;
+      background: rgba(231, 76, 60, 0.1);
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 2rem;
+      color: #95a5a6;
+      font-style: italic;
+    }
+
+    .header-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .last-updated {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.8rem;
+      font-style: italic;
+    }
+
+    .status-online {
+      color: #27ae60;
+      font-weight: bold;
+    }
+
+    .status-offline {
+      color: #95a5a6;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-dot.online {
+      background-color: #27ae60;
+      box-shadow: 0 0 6px #27ae60;
+    }
+
+    .status-dot.offline {
+      background-color: #95a5a6;
+    }
+
+    .auto-refresh-info {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px 15px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: #666;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .table-container {
+        padding: 1rem;
+      }
+      
       table, tbody, tr, td, th {
         display: block;
         width: 100%;
       }
 
-      td, th {
-        box-sizing: border-box;
-        padding: 10px;
+      th {
+        display: none;
       }
 
-      th {
-        background: #eaeaea;
+      td {
+        box-sizing: border-box;
+        padding: 10px;
+        position: relative;
+        padding-left: 30%;
+        border-bottom: 1px solid #eee;
+      }
+
+      td:before {
+        content: attr(data-label) ": ";
+        position: absolute;
+        left: 10px;
+        width: 25%;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      tr {
+        border: 1px solid #eee;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        overflow: hidden;
       }
     }
   </style>
 </head>
 <body>
-  <h1>📊 Dashboard Komentar & User (Online)</h1>
+  <div class="container">
+    <h1>📊 Dashboard Komentar & User Online</h1>
+    
+    <div class="auto-refresh-info">
+      🔄 Auto-refresh setiap 30 detik • Status: <span id="refreshStatus">Aktif</span> • Terakhir: <span id="lastRefresh">-</span>
+    </div>
 
-  <h2>👥 Pengguna Terdaftar</h2>
-  <table id="userTable">
-    <thead>
-      <tr>
-        <th>Nama</th>
-        <th>Email</th>
-        <th>Login Terakhir</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <div class="stats-container">
+      <div class="stat-card">
+        <span class="stat-number" id="totalUsers">0</span>
+        <div class="stat-label">Total Users</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number online-indicator" id="onlineUsers">0</span>
+        <div class="stat-label">Users Online</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="totalComments">0</span>
+        <div class="stat-label">Total Komentar</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="articlesCount">0</span>
+        <div class="stat-label">Artikel Aktif</div>
+      </div>
+    </div>
 
-  <h2>💬 Komentar Terbaru</h2>
-  <table id="commentTable">
-    <thead>
-      <tr>
-        <th>Artikel</th>
-        <th>Penulis</th>
-        <th>Komentar</th>
-        <th>Tanggal</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <div class="table-container">
+      <div class="header-controls">
+        <h2>👥 Status Pengguna</h2>
+        <button class="refresh-btn" onclick="loadUsers()" id="userRefreshBtn">🔄 Refresh</button>
+      </div>
+      <div class="last-updated" id="usersLastUpdated"></div>
+      <table id="userTable">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Nama</th>
+            <th>Email</th>
+            <th>Login Terakhir</th>
+          </tr>
+        </thead>
+        <tbody id="userTableBody">
+          <tr><td colspan="4" class="loading">Memuat data pengguna...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-container">
+      <div class="header-controls">
+        <h2>💬 Komentar Terbaru</h2>
+        <button class="refresh-btn" onclick="loadComments()" id="commentRefreshBtn">🔄 Refresh</button>
+      </div>
+      <div class="last-updated" id="commentsLastUpdated"></div>
+      <table id="commentTable">
+        <thead>
+          <tr>
+            <th>Artikel</th>
+            <th>Penulis</th>
+            <th>Komentar</th>
+            <th>Tanggal</th>
+          </tr>
+        </thead>
+        <tbody id="commentTableBody">
+          <tr><td colspan="4" class="loading">Memuat komentar...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
   <script>
-    async function fetchData() {
-      const [usersRes, commentsRes] = await Promise.all([
-        fetch('/api/users'),
-        fetch('/api/all-comments'),
-      ]);
+    let userData = [];
+    let commentData = [];
+    let refreshInterval;
 
-      const users = await usersRes.json();
-      const comments = await commentsRes.json();
-
-      const userTable = document.querySelector('#userTable tbody');
-      const commentTable = document.querySelector('#commentTable tbody');
-
-      users.forEach(user => {
-        const row = `<tr>
-          <td>${user.displayName}</td>
-          <td>${user.email}</td>
-          <td>${new Date(user.createdAt).toLocaleString()}</td>
-        </tr>`;
-        userTable.innerHTML += row;
-      });
-
-      comments.forEach(comment => {
-        const row = `<tr>
-          <td>${comment.articleIdentifier}</td>
-          <td>${comment.author}</td>
-          <td>${comment.text}</td>
-          <td>${new Date(comment.timestamp).toLocaleString()}</td>
-        </tr>`;
-        commentTable.innerHTML += row;
-      });
+    // Format waktu Indonesia
+    function formatTime(dateString) {
+      if (!dateString) return 'Tidak tersedia';
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('id-ID', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
     }
 
-    fetchData();
+    // Cek apakah user online (aktif dalam 10 menit terakhir)
+    function isUserOnline(lastActivity) {
+      if (!lastActivity) return false;
+      const now = new Date();
+      const lastActive = new Date(lastActivity);
+      const diffMinutes = (now - lastActive) / (1000 * 60);
+      return diffMinutes <= 10; // 10 menit
+    }
+
+    // Hitung user online
+    function getOnlineUsersCount() {
+      return userData.filter(user => 
+        isUserOnline(user.loginTerakhir || user.lastActivity || user.createdAt)
+      ).length;
+    }
+
+    // Hitung artikel unik
+    function getUniqueArticles() {
+      const articles = new Set();
+      commentData.forEach(comment => {
+        if (comment.articleIdentifier) {
+          articles.add(comment.articleIdentifier);
+        }
+      });
+      return articles.size;
+    }
+
+    // Update statistik
+    function updateStats() {
+      document.getElementById('totalUsers').textContent = userData.length;
+      document.getElementById('onlineUsers').textContent = getOnlineUsersCount();
+      document.getElementById('totalComments').textContent = commentData.length;
+      document.getElementById('articlesCount').textContent = getUniqueArticles();
+    }
+
+    // Update last refresh time
+    function updateLastRefresh() {
+      document.getElementById('lastRefresh').textContent = formatTime(new Date());
+    }
+
+    // Load users
+    async function loadUsers() {
+      const btn = document.getElementById('userRefreshBtn');
+      const tableBody = document.getElementById('userTableBody');
+      
+      try {
+        btn.disabled = true;
+        btn.textContent = '⏳ Loading...';
+        
+        const response = await fetch('/api/users');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        userData = await response.json();
+        
+        // Update timestamp
+        document.getElementById('usersLastUpdated').textContent = 
+          `Terakhir diperbarui: ${formatTime(new Date())}`;
+        
+        if (!userData || userData.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="4" class="empty">Belum ada pengguna terdaftar</td></tr>';
+          updateStats();
+          return;
+        }
+
+        // Sort by online status first, then by name
+        userData.sort((a, b) => {
+          const aOnline = isUserOnline(a.loginTerakhir || a.lastActivity || a.createdAt);
+          const bOnline = isUserOnline(b.loginTerakhir || b.lastActivity || b.createdAt);
+          
+          if (aOnline && !bOnline) return -1;
+          if (!aOnline && bOnline) return 1;
+          
+          const aName = a.displayName || a.nama || 'Unknown';
+          const bName = b.displayName || b.nama || 'Unknown';
+          return aName.localeCompare(bName);
+        });
+
+        tableBody.innerHTML = userData.map(user => {
+          const online = isUserOnline(user.loginTerakhir || user.lastActivity || user.createdAt);
+          const lastActivity = user.loginTerakhir || user.lastActivity || user.createdAt;
+          
+          return `
+            <tr>
+              <td data-label="Status">
+                <span class="status-dot ${online ? 'online' : 'offline'}"></span>
+                <span class="${online ? 'status-online' : 'status-offline'}">
+                  ${online ? 'Online' : 'Offline'}
+                </span>
+              </td>
+              <td data-label="Nama">${user.displayName || user.nama || 'Unknown User'}</td>
+              <td data-label="Email">${user.email || 'No email'}</td>
+              <td data-label="Login Terakhir">${formatTime(lastActivity)}</td>
+            </tr>
+          `;
+        }).join('');
+        
+        updateStats();
+        updateLastRefresh();
+        
+      } catch (error) {
+        console.error('Error loading users:', error);
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="4" class="error">
+              Error memuat data pengguna: ${error.message}<br>
+              <small>Pastikan server berjalan dan endpoint /api/users tersedia</small>
+            </td>
+          </tr>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Refresh';
+      }
+    }
+
+    // Load comments
+    async function loadComments() {
+      const btn = document.getElementById('commentRefreshBtn');
+      const tableBody = document.getElementById('commentTableBody');
+      
+      try {
+        btn.disabled = true;
+        btn.textContent = '⏳ Loading...';
+        
+        const response = await fetch('/api/all-comments');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        commentData = await response.json();
+        
+        // Update timestamp
+        document.getElementById('commentsLastUpdated').textContent = 
+          `Terakhir diperbarui: ${formatTime(new Date())}`;
+        
+        if (!commentData || commentData.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="4" class="empty">Belum ada komentar</td></tr>';
+          updateStats();
+          return;
+        }
+
+        // Sort by newest first
+        commentData.sort((a, b) => {
+          const aTime = new Date(a.timestamp || a.tanggal || 0);
+          const bTime = new Date(b.timestamp || b.tanggal || 0);
+          return bTime - aTime;
+        });
+
+        tableBody.innerHTML = commentData.map(comment => {
+          const commentText = comment.text || comment.komentar || 'No content';
+          const truncatedText = commentText.length > 100 ? 
+            commentText.substring(0, 100) + '...' : commentText;
+          
+          return `
+            <tr>
+              <td data-label="Artikel">${comment.articleIdentifier || 'Unknown'}</td>
+              <td data-label="Penulis">${comment.author || comment.penulis || 'Anonymous'}</td>
+              <td data-label="Komentar">${truncatedText}</td>
+              <td data-label="Tanggal">${formatTime(comment.timestamp || comment.tanggal)}</td>
+            </tr>
+          `;
+        }).join('');
+        
+        updateStats();
+        updateLastRefresh();
+        
+      } catch (error) {
+        console.error('Error loading comments:', error);
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="4" class="error">
+              Error memuat komentar: ${error.message}<br>
+              <small>Pastikan server berjalan dan endpoint /api/all-comments tersedia</small>
+            </td>
+          </tr>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Refresh';
+      }
+    }
+
+    // Load all data
+    async function loadAllData() {
+      document.getElementById('refreshStatus').textContent = 'Memuat...';
+      await Promise.all([loadUsers(), loadComments()]);
+      document.getElementById('refreshStatus').textContent = 'Aktif';
+    }
+
+    // Start auto refresh
+    function startAutoRefresh() {
+      // Clear existing interval
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+      
+      // Set new interval
+      refreshInterval = setInterval(() => {
+        loadAllData();
+      }, 30000); // 30 seconds
+    }
+
+    // Stop auto refresh
+    function stopAutoRefresh() {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+      }
+      document.getElementById('refreshStatus').textContent = 'Tidak aktif';
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initial load
+      loadAllData();
+      
+      // Start auto refresh
+      startAutoRefresh();
+      
+      // Handle page visibility change
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+          stopAutoRefresh();
+        } else {
+          startAutoRefresh();
+          loadAllData(); // Refresh when page becomes visible
+        }
+      });
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+      stopAutoRefresh();
+    });
   </script>
 </body>
 </html>

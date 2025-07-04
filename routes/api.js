@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
 const User = require('../models/user');
 const Comment = require('../models/comment');
+const multer = require('multer');
+const path = require('path');
 
 // ✅ Inisialisasi Firebase Admin SDK pakai file service account
 const serviceAccount = require('../berita-komentar-maftuh-firebase-adminsdk-fbsvc-9a64386d29.json');
@@ -13,6 +15,19 @@ if (!admin.apps.length) {
     credential: admin.credential.cert(serviceAccount),
   });
 }
+
+// Atur tempat penyimpanan dan nama file
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // folder uploads
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = Date.now() + '-' + file.originalname;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ storage });
 
 // --- RUTE UNTUK AUTENTIKASI DARI FLUTTER ---
 router.post('/auth/google', async (req, res) => {
@@ -101,6 +116,17 @@ router.get('/all-comments', async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Gagal mengambil komentar' });
   }
+});
+
+// API: Upload foto profil
+router.post('/upload-profile', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'Tidak ada file dikirim' });
+  }
+
+  // Kirim path URL dari file yang berhasil di-upload
+  const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  res.status(200).json({ imageUrl });
 });
 
 module.exports = router;
