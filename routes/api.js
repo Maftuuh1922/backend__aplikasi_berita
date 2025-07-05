@@ -1,132 +1,79 @@
-const express = require('express');
-const router = express.Router();
-const jwt = require('jsonwebtoken');
-const admin = require('firebase-admin');
-const User = require('../models/user');
-const Comment = require('../models/comment');
-const multer = require('multer');
-const path = require('path');
+const express  = require('express');
+const router   = express.Router();
+const jwt      = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+const multer   = require('multer');
 
-// ✅ Inisialisasi Firebase Admin SDK pakai file service account
-const serviceAccount = require('../berita-komentar-maftuh-firebase-adminsdk-fbsvc-9a64386d29.json');
+const User     = require('../models/user');
+const Comment  = require('../models/comment');
+const { verifyToken } = require('../middleware/auth'); // ← perbaikan path
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
+/* ── Google OAuth2 client ── */
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Atur tempat penyimpanan dan nama file
+/* ── Multer setup ── */
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // folder uploads
-  },
-  filename: function (req, file, cb) {
-    const uniqueName = Date.now() + '-' + file.originalname;
-    cb(null, uniqueName);
-  },
+  destination: (_, __, cb) => cb(null, 'uploads/'),
+  filename:    (_, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
-
 const upload = multer({ storage });
 
-// --- RUTE UNTUK AUTENTIKASI DARI FLUTTER ---
+/* ── Login Google ── */
 router.post('/auth/google', async (req, res) => {
   const { token } = req.body;
-
   try {
-    // ✅ Verifikasi token Firebase dari Flutter
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    const { uid, name, email, picture } = decodedToken;
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const { sub: googleId, email, name, picture } = ticket.getPayload();
 
-    // ✅ Simpan atau cari user di MongoDB
-    let user = await User.findOne({ googleId: uid });
-
+    let user = await User.findOne({ googleId });
     if (!user) {
-      user = new User({
-        googleId: uid,
-        email: email,
+      user = await User.create({
+        googleId,
+        email,
         displayName: name || email,
         photoUrl: picture || '',
       });
-      await user.save();
     }
 
-    // ✅ Buat JWT aplikasi
     const appToken = jwt.sign(
-      { id: user._id, name: user.displayName },
+      { id: user._id, name: user.displayName, email },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-
-    res.status(200).json({
-      token: appToken,
-      user: {
-        name: user.displayName,
-        email: user.email,
-        photo: user.photoUrl,
-      },
-    });
-
-  } catch (error) {
-    console.error('❌ Error verifikasi token Firebase:', error);
-    res.status(401).json({ message: 'Login gagal, token tidak valid.' });
+    res.json({ token: appToken, user: { name: user.displayName, email, photo: user.photoUrl } });
+  } catch (e) {
+    console.error('Google token invalid', e);
+    res.status(401).json({ message: 'Login Google gagal' });
   }
 });
 
-// --- RUTE KOMENTAR ---
+/* ── Komentar ── */
 router.get('/articles/:articleId/comments', async (req, res) => {
   try {
-    const articleIdentifier = decodeURIComponent(req.params.articleId);
-    const comments = await Comment.find({ articleIdentifier }).sort({ timestamp: -1 });
-    res.json(comments);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+    const art = decodeURIComponent(req.params.articleId);
+    res.json(await Comment.find({ articleIdentifier: art }).sort({ timestamp: -1 }));
+  } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-router.post('/articles/:articleId/comments', async (req, res) => {
-  const comment = new Comment({
-    articleIdentifier: decodeURIComponent(req.params.articleId),
-    author: req.body.author,
-    text: req.body.text,
-  });
-
+router.post('/articles/:articleId/comments', verifyToken, async (req, res) => {
   try {
-    const newComment = await comment.save();
-    res.status(201).json(newComment);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
+    const newCom = await Comment.create({
+      articleIdentifier: decodeURIComponent(req.params.articleId),
+      author: req.user.name,
+      text: req.body.text,
+    });
+    res.status(201).json(newCom);
+  } catch (e) { res.status(400).json({ message: e.message }); }
 });
 
-// --- RUTE DASHBOARD DATA ---
-router.get('/users', async (req, res) => {
-  try {
-    const users = await User.find().sort({ createdAt: -1 });
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ message: 'Gagal mengambil data user' });
-  }
-});
-
-router.get('/all-comments', async (req, res) => {
-  try {
-    const comments = await Comment.find().sort({ timestamp: -1 });
-    res.json(comments);
-  } catch (err) {
-    res.status(500).json({ message: 'Gagal mengambil komentar' });
-  }
-});
-
-// API: Upload foto profil
-router.post('/upload-profile', upload.single('image'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'Tidak ada file dikirim' });
-  }
-
-  // Kirim path URL dari file yang berhasil di-upload
+/* ── Upload foto profil ── */
+router.post('/upload-profile', verifyToken, upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
   const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  res.status(200).json({ imageUrl });
+  res.json({ imageUrl });
 });
 
 module.exports = router;

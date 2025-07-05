@@ -1,10 +1,8 @@
 require('dotenv').config();
-
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
-const apiRoutes = require('./routes/api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,24 +11,20 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connection
-const dbUri = process.env.MONGODB_URI;
-if (!dbUri) {
-  console.error('ERROR: MONGODB_URI tidak ditemukan di file .env');
-  process.exit(1);
-}
-mongoose.connect(dbUri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB terhubung...'))
-  .catch(err => console.error('Gagal terhubung ke MongoDB:', err));
+// Upload folder for image access
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Route utama
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+// DB Connect
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch(err => console.error('❌ MongoDB error:', err));
 
-// API route
-app.use('/api', apiRoutes);
+// Routes
+app.use('/api', require('./routes/api'));
+
+// Default route
+app.get('/', (req, res) => res.send('API is running'));
 
 app.listen(PORT, () => {
-  console.log(`Server berjalan di port ${PORT}`);
+  console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
 });
