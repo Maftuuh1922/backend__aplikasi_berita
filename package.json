@@ -1,6 +1,8 @@
 {
   "name": "aplikasi-berita-backend",
   "version": "1.0.0",
+  "description": "API for FOKUS application",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "tunnel": "cloudflared tunnel --config .cloudflared/config.yml run",
@@ -19,5 +21,13 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
-  }
+  },
+  "keywords": [
+    "api",
+    "fokus",
+    "express",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC"
 }

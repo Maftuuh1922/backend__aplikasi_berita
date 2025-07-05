@@ -1,22 +1,19 @@
-import express from 'express';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { OAuth2Client } from 'google-auth-library';
-import multer from 'multer';
+// routes/auth.js
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { OAuth2Client } = require('google-auth-library');
 
-import User from '../models/user.js';
-import Comment from '../models/comment.js';          // jika ada
-import { verifyToken } from '../middleware/auth.js';
-
+const User = require('../models/user');
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-/* ---------- REGISTER ---------- */
+/* ---------------------- REGISTER (email & password) ---------------------- */
 router.post('/register', async (req, res) => {
-  console.log('\n-- REGISTER --', req.body);
-
   const { email, password, displayName } = req.body;
-  if (!email || !password) return res.status(400).json({ message: 'Email & password wajib' });
+
+  if (!email || !password)
+    return res.status(400).json({ message: 'Email & password wajib' });
 
   try {
     if (await User.findOne({ email })) {
@@ -24,14 +21,25 @@ router.post('/register', async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, password: hash, displayName });
+    const user = await User.create({
+      email,
+      password: hash,
+      displayName: displayName || email,
+    });
 
-    const token = jwt.sign({ id: user._id, name: user.displayName, email },
-                           process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: user._id, displayName: user.displayName, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.status(201).json({
       token,
-      user: { name: user.displayName, email, photo: user.photoUrl || '' }
+      user: {
+        name: user.displayName,
+        email: user.email,
+        photo: user.photoUrl || ''
+      }
     });
   } catch (e) {
     console.error('Register error:', e);
@@ -39,27 +47,46 @@ router.post('/register', async (req, res) => {
   }
 });
 
-/* ---------- LOGIN GOOGLE ---------- */
-router.post('/auth/google', async (req, res) => {
+/* --------------------------- LOGIN GOOGLE --------------------------- */
+router.post('/google', async (req, res) => {
   const { token } = req.body;
+
   try {
     const ticket = await googleClient.verifyIdToken({
       idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID
+      audience: process.env.GOOGLE_CLIENT_ID,
     });
+
     const { sub: googleId, email, name, picture } = ticket.getPayload();
 
     let user = await User.findOne({ googleId });
     if (!user) {
-      user = await User.create({ googleId, email, displayName: name, photoUrl: picture });
+      user = await User.create({
+        googleId,
+        email,
+        displayName: name,
+        photoUrl: picture,
+      });
     }
 
-    const appToken = jwt.sign({ id: user._id, name: user.displayName, email },
-                              process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token: appToken, user: { name: user.displayName, email, photo: user.photoUrl } });
+    const appToken = jwt.sign(
+      { id: user._id, displayName: user.displayName, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      token: appToken,
+      user: {
+        name: user.displayName,
+        email: user.email,
+        photo: user.photoUrl || ''
+      }
+    });
   } catch (e) {
+    console.error('Google login error:', e);
     res.status(401).json({ message: 'Login Google gagal', error: e.message });
   }
 });
 
-export default router;
+module.exports = router;

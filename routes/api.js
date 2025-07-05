@@ -1,13 +1,13 @@
-// routes/api.js  (ES‑Module)
-import express from 'express';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { OAuth2Client } from 'google-auth-library';
-import multer from 'multer';
+// routes/api.js  (CommonJS)
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { OAuth2Client } = require('google-auth-library');
+const multer = require('multer');
 
-import User from '../models/user.js';
-import Comment from '../models/comment.js';
-import { verifyToken } from '../middleware/auth.js';
+const User = require('../models/user');
+const Comment = require('../models/comment');
+const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -140,4 +140,4 @@ router.post('/upload-profile', verifyToken, upload.single('image'), (req, res) =
 });
 
 /* ------------------------------------------------------------------ */
-export default router;
+module.exports = router;
