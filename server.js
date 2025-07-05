@@ -57,10 +57,6 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Create compound index to handle both email and Google users
-userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
-
 const User = mongoose.model('User', userSchema);
 
 /* ────────── Registration Route - FIXED ────────── */
@@ -215,3 +211,5 @@ mongoose.connect(MONGODB)
     console.error('❌ MongoDB error:', err);
     process.exit(1);
   });
+
+app.use('/api/auth', require('./routes/auth'));

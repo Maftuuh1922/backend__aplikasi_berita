@@ -11,17 +11,15 @@ const bcrypt   = require('bcryptjs');
  *  • displayName: nama yang ditampilkan di aplikasi
  *  • photoUrl   : URL foto profil
  */
-const userSchema = new mongoose.Schema(
-  {
-    email:       { type: String, required: true, unique: true, lowercase: true },
-    password:    { type: String },                               // optional
-    googleId:    { type: String, unique: true, sparse: true },  // optional
-
-    displayName: { type: String, required: true },
-    photoUrl:    { type: String }
-  },
-  { timestamps: true }
-);
+const userSchema = new mongoose.Schema({
+  email:        { type: String, required: true, unique: true },
+  password:     { type: String },
+  googleId:     { type: String, unique: true, sparse: true },
+  displayName:  { type: String, required: true },
+  photoUrl:     { type: String },
+  isVerified:   { type: Boolean, default: false },
+  verifyToken:  { type: String }
+}, { timestamps: true });
 
 /* ------------------------------------------------------------------ */
 /*  HASH PASSWORD OTOMATIS SEBELUM DISIMPAN (jika password ada/diubah) */
@@ -40,4 +38,5 @@ userSchema.methods.matchPassword = function (plainText) {
   return bcrypt.compare(plainText, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+// Cegah OverwriteModelError:
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);
