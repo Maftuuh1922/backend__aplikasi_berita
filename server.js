@@ -1,55 +1,73 @@
+// server.js  ── CommonJS version
 require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const path = require('path');
 
-const app = express();
+const path      = require('path');
+const express   = require('express');
+const mongoose  = require('mongoose');
+const cors      = require('cors');
+
+/* ────────── Import routers ────────── */
+const authRoutes     = require('./routes/auth');
+const profileRoutes  = require('./routes/profile');
+const articleRoutes  = require('./routes/articles');
+const commentRoutes  = require('./routes/comments');
+const uploadRoutes   = require('./routes/upload');
+const apiRoutes      = require('./routes/api');   // router umum
+
+/* ────────── App & Config ────────── */
+const app  = express();
 const PORT = process.env.PORT || 3000;
+const MONGODB = process.env.MONGO_URI || process.env.MONGODB_URI;
 
-// CORS configuration
+/* ────────── Basic Logging ────────── */
+app.use((req, _, next) => {
+  console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  console.log('Headers:', req.headers);
+  next();
+});
+
+/* ────────── CORS ────────── */
 app.use(cors({
   origin: ['https://icbs.my.id', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS','HEAD'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  credentials: true,
 }));
 
-// Body parser middleware
+/* ────────── Body Parsers ────────── */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files
-app.use(express.static(path.join(__dirname)));
-
-// Upload folder for image access
+/* ────────── Static Files ────────── */
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(__dirname)); // mis. index.html, register.html
 
-// DB Connect
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB error:', err));
+/* ────────── Routes ────────── */
+app.use('/api/auth', authRoutes);
+app.use('/api/profile',  profileRoutes);
+app.use('/api/articles', articleRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/upload',   uploadRoutes);
+app.use('/api', apiRoutes);            // root API umum
 
-// Routes
-app.use('/api', require('./routes/api'));
-app.use('/api/auth', require('./routes/auth'));
+/* ────────── HTML fallback (optional) ────────── */
+app.get('/', (_, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/register', (_, res) => res.sendFile(path.join(__dirname, 'register.html')));
 
-// Default route
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+/* ────────── 404 Handler ────────── */
+app.use((_, res) => res.status(404).send('Not Found'));
 
-// Registration page route
-app.get('/register', (req, res) => {
-  res.sendFile(path.join(__dirname, 'register.html'));
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
+/* ────────── Global Error Handler ────────── */
+app.use((err, _, res, __) => {
+  console.error('GLOBAL ERROR:', err.stack);
   res.status(500).json({ message: 'Terjadi kesalahan pada server' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
-});
+/* ────────── MongoDB & Server Start ────────── */
+mongoose.connect(MONGODB)
+  .then(() => {
+    console.log('✅ MongoDB connected');
+    app.listen(PORT, '0.0.0.0', () =>
+      console.log(`🚀 Server berjalan di http://localhost:${PORT}`));
+  })
+  .catch(err => console.error('❌ MongoDB connection error:', err));

@@ -1,33 +1,26 @@
-// models/user.js
-const mongoose = require('mongoose');
-const bcrypt   = require('bcrypt');
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema(
   {
-    // ――― Credensial utama
-    email:      { type: String, required: true, unique: true },
-    password:   { type: String },      // kosong/null kalau login Google‑only
-    googleId:   { type: String, unique: true, sparse: true }, // optional
+    email:       { type: String, required: true, unique: true },
+    password:    { type: String },                         // kosong bila login Google‑only
+    googleId:    { type: String, unique: true, sparse: true },
 
-    // ――― Profil
     displayName: { type: String, required: true },
-    photoUrl:    { type: String },
-
-    // ――― Tambahan
+    photoUrl:    { type: String }
   },
   { timestamps: true }
 );
 
-/* Hash password sebelum save (hanya kalau field password diubah/diisi) */
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password') || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-/* Helper untuk verifikasi password login email‑password */
 userSchema.methods.matchPassword = function (plain) {
   return bcrypt.compare(plain, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+export default mongoose.model('User', userSchema);

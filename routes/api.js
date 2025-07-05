@@ -1,43 +1,44 @@
-const express  = require('express');
-const router   = express.Router();
-const jwt      = require('jsonwebtoken');
-const { OAuth2Client } = require('google-auth-library');
-const multer   = require('multer');
-const bcrypt = require('bcryptjs');
-const cors = require('cors');
+// routes/api.js  (ES‑Module)
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
+import multer from 'multer';
 
-const User     = require('../models/user');
-const Comment  = require('../models/comment');
-const { verifyToken } = require('../middleware/auth'); // ← perbaikan path
+import User from '../models/user.js';
+import Comment from '../models/comment.js';
+import { verifyToken } from '../middleware/auth.js';
 
-/* ── Register endpoint ── */
-// Handle OPTIONS preflight
-router.options('/auth/register', cors());
+const router = express.Router();
 
-// Handle GET request
-router.get('/auth/register', (req, res) => {
-  res.status(200).json({ message: 'Registration endpoint is working. Please use POST method to register.' });
-});
+/* ------------------------------------------------------------------ */
+/* 1. Register                                                        */
+/* ------------------------------------------------------------------ */
 
-// Handle POST request
+router.options('/auth/register', (_, res) => res.sendStatus(204)); // CORS pre‑flight
+
+router.get('/auth/register', (_, res) =>
+  res.json({ message: 'Register endpoint OK – gunakan POST untuk mendaftar' })
+);
+
 router.post('/auth/register', async (req, res) => {
   try {
     const { email, password, displayName } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Email sudah terdaftar' });
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email & password wajib' });
     }
 
-    // Create new user - password hashing handled by User model
+    if (await User.findOne({ email })) {
+      return res.status(409).json({ message: 'Email sudah terdaftar' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
     const user = await User.create({
       email,
-      password,
+      password: hash,
       displayName: displayName || email,
     });
 
-    // Generate JWT token
     const token = jwt.sign(
       { id: user._id, name: user.displayName, email },
       process.env.JWT_SECRET,
@@ -46,29 +47,20 @@ router.post('/auth/register', async (req, res) => {
 
     res.status(201).json({
       token,
-      user: {
-        name: user.displayName,
-        email,
-        photo: user.photoUrl || ''
-      }
+      user: { name: user.displayName, email, photo: user.photoUrl || '' },
     });
-  } catch (error) {
-    console.error('Registration error:', error);
+  } catch (err) {
+    console.error('Register error:', err);
     res.status(500).json({ message: 'Terjadi kesalahan saat registrasi' });
   }
 });
 
-/* ── Google OAuth2 client ── */
+/* ------------------------------------------------------------------ */
+/* 2. Google OAuth login                                              */
+/* ------------------------------------------------------------------ */
+
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-/* ── Multer setup ── */
-const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, 'uploads/'),
-  filename:    (_, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-});
-const upload = multer({ storage });
-
-/* ── Login Google ── */
 router.post('/auth/google', async (req, res) => {
   const { token } = req.body;
   try {
@@ -93,19 +85,29 @@ router.post('/auth/google', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    res.json({ token: appToken, user: { name: user.displayName, email, photo: user.photoUrl } });
+
+    res.json({
+      token: appToken,
+      user: { name: user.displayName, email, photo: user.photoUrl },
+    });
   } catch (e) {
-    console.error('Google token invalid', e);
+    console.error('Google login error:', e);
     res.status(401).json({ message: 'Login Google gagal' });
   }
 });
 
-/* ── Komentar ── */
+/* ------------------------------------------------------------------ */
+/* 3. Komentar artikel                                                */
+/* ------------------------------------------------------------------ */
+
 router.get('/articles/:articleId/comments', async (req, res) => {
   try {
     const art = decodeURIComponent(req.params.articleId);
-    res.json(await Comment.find({ articleIdentifier: art }).sort({ timestamp: -1 }));
-  } catch (e) { res.status(500).json({ message: e.message }); }
+    const comments = await Comment.find({ articleIdentifier: art }).sort({ timestamp: -1 });
+    res.json(comments);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 router.post('/articles/:articleId/comments', verifyToken, async (req, res) => {
@@ -116,14 +118,26 @@ router.post('/articles/:articleId/comments', verifyToken, async (req, res) => {
       text: req.body.text,
     });
     res.status(201).json(newCom);
-  } catch (e) { res.status(400).json({ message: e.message }); }
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
 });
 
-/* ── Upload foto profil ── */
+/* ------------------------------------------------------------------ */
+/* 4. Upload foto profil                                              */
+/* ------------------------------------------------------------------ */
+
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, 'uploads/'),
+  filename:    (_, file, cb) => cb(null, Date.now() + '-' + file.originalname),
+});
+const upload = multer({ storage });
+
 router.post('/upload-profile', verifyToken, upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
   const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
   res.json({ imageUrl });
 });
 
-module.exports = router;
+/* ------------------------------------------------------------------ */
+export default router;
