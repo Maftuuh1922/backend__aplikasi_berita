@@ -1,0 +1,8 @@
+tunnel: 06551683-130e-41d8-9bec-71d7c799bbac
+credentials-file: .cloudflared/06551683-130e-41d8-9bec-71d7c799bbac.json
+protocol: http2
+
+ingress:
+  - hostname: icbs.my.id
+    service: http://localhost:3000
+  - service: http_status:404 

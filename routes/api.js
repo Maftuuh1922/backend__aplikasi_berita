@@ -3,10 +3,60 @@ const router   = express.Router();
 const jwt      = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const multer   = require('multer');
+const bcrypt = require('bcryptjs');
+const cors = require('cors');
 
 const User     = require('../models/user');
 const Comment  = require('../models/comment');
 const { verifyToken } = require('../middleware/auth'); // ← perbaikan path
+
+/* ── Register endpoint ── */
+// Handle OPTIONS preflight
+router.options('/auth/register', cors());
+
+// Handle GET request
+router.get('/auth/register', (req, res) => {
+  res.status(200).json({ message: 'Registration endpoint is working. Please use POST method to register.' });
+});
+
+// Handle POST request
+router.post('/auth/register', async (req, res) => {
+  try {
+    const { email, password, displayName } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email sudah terdaftar' });
+    }
+
+    // Create new user - password hashing handled by User model
+    const user = await User.create({
+      email,
+      password,
+      displayName: displayName || email,
+    });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, name: user.displayName, email },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        name: user.displayName,
+        email,
+        photo: user.photoUrl || ''
+      }
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan saat registrasi' });
+  }
+});
 
 /* ── Google OAuth2 client ── */
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
