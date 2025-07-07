@@ -164,6 +164,42 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+/* ────────── Check Email Route - NEW ────────── */
+app.post('/api/auth/check-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Check if email is provided
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+    
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (user) {
+      return res.json({
+        success: true,
+        exists: true
+      });
+    }
+    
+    res.json({
+      success: true,
+      exists: false
+    });
+    
+  } catch (error) {
+    console.error('❌ Check email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error checking email'
+    });
+  }
+});
+
 /* ────────── Test Routes ────────── */
 app.get('/test', (req, res) => {
   res.json({
@@ -178,7 +214,8 @@ app.get('/', (req, res) => {
     endpoints: [
       'GET /test',
       'POST /api/auth/register',
-      'POST /api/auth/login'
+      'POST /api/auth/login',
+      'POST /api/auth/check-email'
     ]
   });
 });
