@@ -14,9 +14,8 @@ console.log('🚀 Starting server...');
 
 /* ────────── CORS ────────── */
 app.use(cors({
-  origin: true,
-  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS','HEAD'],
-  allowedHeaders: ['Content-Type','Authorization','Accept','Origin','X-Requested-With'],
+  origin: '*', // Atau ganti dengan origin spesifik aplikasi Anda, misal: 'http://localhost:5173'
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
 
