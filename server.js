@@ -199,7 +199,9 @@ connectDB();
 
 /* ────────── Start Server ────────── */
 console.log('📡 Connecting to MongoDB...');
-mongoose.connect(MONGODB)
+mongoose.connect(MONGODB, {
+  // ...other options (if any)...
+})
   .then(() => {
     console.log('✅ MongoDB connected');
     app.listen(PORT, '0.0.0.0', () => {

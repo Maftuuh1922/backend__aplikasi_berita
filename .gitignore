@@ -34,3 +34,4 @@ Thumbs.db
 .cloudflared/*.json
 .cloudflared/cert.pem
 EOF
+.vercel
